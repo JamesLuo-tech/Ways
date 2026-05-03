@@ -2,6 +2,23 @@
 
 # 变更日志
 
+## Git 上传前仓库清理
+
+**日期：** 2026-05-03
+
+### 变更
+
+- 重新整理 Git 历史，上传到 GitHub 的 `main` 仅保留项目源码、配置、文档和锁文件
+- 从上传历史中排除 `node_modules/`、`.venv/`、`.expo/`、Python `__pycache__` / `*.pyc` 和 `.env.local`
+- 补充版本控制约定，明确本地依赖、环境变量和生成物不进入 Git
+- 清理前的本地历史保留在 `backup/pre-upload-with-deps-20260503` 分支
+
+### 修改文件
+
+- `.gitignore` — 增加本地依赖、虚拟环境、Expo 生成物、Python 缓存和环境变量忽略规则
+- `wiki/06-conventions.md` — 增加版本控制约定
+- `wiki/90-CHANGELOG.md` — 记录本次仓库清理和上传边界
+
 ## Web 地图稳定性修复
 
 **日期：** 2026-04-29

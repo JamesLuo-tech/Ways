@@ -48,6 +48,11 @@
 - 组件内部状态用 `useState`，跨组件状态用 Zustand
 - 一个 Zustand store 文件只管一个 domain（way、spot、track 各一个）
 
+### 版本控制
+- 不提交本地依赖和生成物：`node_modules/`、`.venv/`、`.expo/`、`__pycache__/`、`*.py[cod]`
+- 不提交本地环境变量文件：`.env.local`
+- 如果依赖目录曾被误加入 Git，上传前先从索引和历史中清理，保留本地文件即可
+
 ## 禁止项
 
 - 不使用 `console.log` 做日志，开发用 `__DEV__` 守卫
