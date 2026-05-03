@@ -1,0 +1,33 @@
+{
+  "expo": {
+    "name": "Ways",
+    "slug": "ways",
+    "scheme": "ways",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "plugins": [
+      "expo-router",
+      "expo-asset",
+      "expo-font",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Ways uses your location to record the route you are currently walking.",
+          "locationAlwaysAndWhenInUsePermission": "Ways uses your location to continue recording your route when the app is in the background.",
+          "isIosBackgroundLocationEnabled": true,
+          "isAndroidBackgroundLocationEnabled": true
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Ways imports your photos to cluster moments by where they were taken."
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
