@@ -1,4 +1,4 @@
-<!-- Last verified: 2026-04-23 | Current stage: D on top of C -->
+<!-- Last verified: 2026-05-11 | Current stage: D on top of C, PostgreSQL integrated -->
 
 # 系统架构
 
@@ -25,7 +25,7 @@
 - 已落地 Agent 2 Explore 改版：`heatBucket` 路线筛选、Spot 内容抽屉、轻量博主主页预览、内容到 Wishlist / `DraftWay` 的转化
 - UI 已从 Apple HIG Native 切换为 Warm Cream 设计系统：暖奶油底色 (#FAF9F6)、电光蓝强调色 (#0A84FF)、暖色调阴影、有机大圆角、浮动毛玻璃 Tab Bar
 - 已落地 FastAPI 示例接口：`GET /api/ways`、`GET /api/ways/{id}`、`GET /api/spots`、`GET /api/spots/{id}`、`GET /healthz`
-- 当前后端仍使用 `server/services/mock_data.py` 内存 seed 数据，尚未接入 PostgreSQL / PostGIS / SQLAlchemy 模型
+- 已落地 PostgreSQL 集成：SQLAlchemy 2.0 异步 ORM（GeoAlchemy2）、Alembic 迁移管理、`server/db/` ORM 层、`server/scripts/seed.py` 初始数据导入
 - 前端已回退到 Mapbox 方案，Explore 页在原生端继续使用 `@rnmapbox/maps`，Web 端单独使用纯 `mapbox-gl`
 - 前端在未设置 `EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN` 时会退化为占位地图面板，便于先跑通交互链路
 - Explore 地图在进入 SDK 前会统一校验 `Coordinate`，过滤非法 `previewPolyline` / Spot 坐标；Web 端 Mapbox 瓦片、session、events 等短暂资源请求失败不再作为致命加载失败处理
@@ -71,7 +71,18 @@ ways/
 │   │   ├── routes.py             # 路线 API
 │   │   ├── spots.py              # Spot API
 │   ├── schemas/                  # Pydantic schemas
-│   └── services/                 # 业务逻辑 / seed 数据
+│   ├── services/                 # 业务逻辑 / seed 数据
+│   ├── db/                       # 数据库层
+│   │   ├── engine.py             # SQLAlchemy 异步引擎 + Base + get_db
+│   │   └── models.py             # ORM 模型（Way、Spot，含 PostGIS geometry）
+│   ├── scripts/                  # 实用脚本
+│   │   └── seed.py               # 将 mock 数据导入数据库的初始 seed 脚本
+│   └── alembic/                  # Alembic 迁移脚本目录
+│       ├── env.py                # 异步迁移环境配置
+│       ├── script.py.mako        # 迁移文件模板
+│       └── versions/             # 生成的迁移版本文件
+├── alembic.ini                   # Alembic 配置（script_location = server/alembic）
+├── tests/                        # API 测试套件
 ├── wiki/                         # 项目文档
 └── package.json
 ```
@@ -84,20 +95,20 @@ ways/
 │  (Expo)      │ ←────────────────── │   Server      │
 └─────────────┘                      └──────────────┘
        │                                    │
-       │ Mapbox token                        │ Stage A: in-memory seed data
+       │ Mapbox token                        │ SQLAlchemy async ORM (GeoAlchemy2)
        ↓                                    ↓
 ┌──────────────┐                      ┌──────────────┐
 │  Mapbox CDN   │                      │ PostgreSQL +  │
 └──────────────┘                      │ PostGIS       │
-                                      │ (planned)     │
+                                      │ (integrated)  │
                                       └──────────────┘
 ```
 
 - 前端通过 REST API 与后端通信
-- Stage A 当前由前端 fallback seed + 后端内存 seed 双轨支持，便于未装环境时快速预览
+- Stage A 后端现由 PostgreSQL + PostGIS 驱动，通过 `server/scripts/seed.py` 导入初始数据；前端保留 fallback seed，便于未装数据库时快速预览
 - Agent 2 新增的 `SpotContent / UserProfileSummary / TravelArchiveSummary / heatBucket` 仍然由同一组 mock 数据驱动
 - Stage C 当前在端侧完成轨迹采样、图片导入、聚类和标签点评，尚未回传后端
-- PostgreSQL / PostGIS、轨迹缓存、照片直传属于后续 Stage 的实现项
+- 轨迹缓存、照片直传属于后续 Stage 的实现项
 - Stage D 的分享能力当前只输出系统分享文案，未导出位图海报文件
 - Stage D 当前使用 `TrackSession.centroid` 作为地域摘要，未做逆地理编码
 
@@ -214,7 +225,7 @@ interface TrackPhoto {
 |------|------|--------|
 | `EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN` | Expo 前端 Mapbox token | — |
 | `EXPO_PUBLIC_API_BASE_URL` | Expo 前端 API 基地址 | `http://127.0.0.1:8000` |
-| `DATABASE_URL` | PostgreSQL 连接串（后续阶段） | `postgresql://localhost/ways` |
+| `DATABASE_URL` | PostgreSQL 异步连接串（**必填**，asyncpg 驱动） | `postgresql+asyncpg://user:pass@localhost/ways` |
 | `SUPABASE_URL` | Supabase 项目 URL | — |
 | `SUPABASE_ANON_KEY` | Supabase 匿名 key | — |
 | `JWT_SECRET` | 用户认证密钥 | — |
@@ -230,8 +241,12 @@ npm run start
 pip install -r server/requirements.txt
 uvicorn server.main:app --reload
 
-# 数据库迁移
-cd server && alembic upgrade head
+# 数据库迁移（从项目根目录运行）
+alembic upgrade head
+alembic current        # 查看当前版本
+
+# 导入初始 seed 数据
+python -m server.scripts.seed
 
 # iOS 构建
 npx expo run:ios
