@@ -8,6 +8,7 @@ from sqlalchemy.exc import OperationalError
 from server.api.auth import router as auth_router
 from server.api.routes import router as ways_router
 from server.api.spots import router as spots_router
+from server.api.tracker import router as tracker_router
 from server.db.engine import engine
 
 
@@ -32,6 +33,7 @@ app.add_middleware(
 app.include_router(auth_router)
 app.include_router(ways_router)
 app.include_router(spots_router)
+app.include_router(tracker_router)
 
 
 @app.exception_handler(OperationalError)

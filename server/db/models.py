@@ -58,3 +58,25 @@ class User(Base):
         nullable=False,
         default=lambda: datetime.now(timezone.utc),
     )
+
+
+class TrackSession(Base):
+    __tablename__ = "track_sessions"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    user_id: Mapped[str] = mapped_column(String, nullable=False)
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    ended_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    track: Mapped[Optional[Any]] = mapped_column(
+        Geometry("LINESTRING", srid=4326), nullable=True
+    )
+    points: Mapped[Optional[Any]] = mapped_column(JSONB, nullable=True)
+    photo_clusters: Mapped[Optional[Any]] = mapped_column(JSONB, nullable=True)
+    tags: Mapped[Optional[list]] = mapped_column(ARRAY(Text), nullable=True)
+    distance_m: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    duration_s: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+    )
