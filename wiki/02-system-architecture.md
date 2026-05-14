@@ -72,8 +72,10 @@ ways/
 │   │   ├── auth.py               # Auth API（register / login / me）
 │   │   ├── routes.py             # 路线 API
 │   │   ├── spots.py              # Spot API
+│   │   ├── tracker.py            # Tracker API（会话保存 / 列表 / 详情 / 删除）
 │   ├── schemas/                  # Pydantic schemas
 │   │   ├── auth.py               # RegisterRequest / LoginRequest / TokenResponse / UserResponse
+│   │   ├── tracker.py            # TrackSessionCreate / TrackSessionResponse 等 tracker schemas
 │   ├── dependencies.py           # FastAPI 依赖：get_current_user（JWT Bearer）
 │   ├── services/                 # 业务逻辑 / seed 数据
 │   ├── db/                       # 数据库层
@@ -224,8 +226,12 @@ interface TrackPhoto {
 | POST | `/api/auth/register` | 用户注册（返回 JWT accessToken） |
 | POST | `/api/auth/login` | 用户登录 / 获取 JWT |
 | GET | `/api/auth/me` | 获取当前用户信息（Bearer token 鉴权） |
+| POST | `/api/tracker/sessions` | 保存轨迹会话（需 auth） |
+| GET | `/api/tracker/sessions` | 列出当前用户的会话（需 auth） |
+| GET | `/api/tracker/sessions/{id}` | 会话详情，含全量 GPS 点（需 auth，仅限本人） |
+| DELETE | `/api/tracker/sessions/{id}` | 删除会话（需 auth，仅限本人） |
 
-> 当前已实现：`GET /api/spots`、`GET /api/spots/{id}`、`GET /api/ways`、`GET /api/ways/{id}`、`GET /healthz`、`POST /api/auth/register`、`POST /api/auth/login`、`GET /api/auth/me`
+> 当前已实现：`GET /api/spots`、`GET /api/spots/{id}`、`GET /api/ways`、`GET /api/ways/{id}`、`GET /healthz`、`POST /api/auth/register`、`POST /api/auth/login`、`GET /api/auth/me`、`POST /api/tracker/sessions`、`GET /api/tracker/sessions`、`GET /api/tracker/sessions/{id}`、`DELETE /api/tracker/sessions/{id}`
 
 ## 数据库表
 
@@ -234,6 +240,7 @@ interface TrackPhoto {
 | `ways` | id, name, theme, polyline, distance, duration, heat_bucket | PostGIS geometry 存储路线几何 |
 | `spots` | id, name, coordinate, category, tags | PostGIS geometry 存储坐标 |
 | `users` | id, email, hashed_password, display_name, avatar_url, bio, home_base, created_at | 用户账号表，`002_add_users` 迁移创建 |
+| `track_sessions` | id, user_id, started_at, ended_at, track (LINESTRING), points (JSONB), photo_clusters (JSONB), tags, distance_m, duration_s, created_at | 用户轨迹会话，PostGIS LINESTRING 存储路径几何 |
 
 ## 环境变量
 
