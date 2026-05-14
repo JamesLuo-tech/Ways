@@ -75,6 +75,7 @@ ways/
 │   │   ├── tracker.py            # Tracker API（会话保存 / 列表 / 详情 / 删除）
 │   ├── schemas/                  # Pydantic schemas
 │   │   ├── auth.py               # RegisterRequest / LoginRequest / TokenResponse / UserResponse
+│   │   ├── content.py            # CreateWayRequest / PatchWayRequest / CreateSpotRequest / PatchSpotRequest
 │   │   ├── tracker.py            # TrackSessionCreate / TrackSessionResponse 等 tracker schemas
 │   ├── dependencies.py           # FastAPI 依赖：get_current_user（JWT Bearer）
 │   ├── services/                 # 业务逻辑 / seed 数据
@@ -230,15 +231,21 @@ interface TrackPhoto {
 | GET | `/api/tracker/sessions` | 列出当前用户的会话（需 auth） |
 | GET | `/api/tracker/sessions/{id}` | 会话详情，含全量 GPS 点（需 auth，仅限本人） |
 | DELETE | `/api/tracker/sessions/{id}` | 删除会话（需 auth，仅限本人） |
+| POST | `/api/ways` | 创建路线（需 auth） |
+| PATCH | `/api/ways/{id}` | 部分更新路线（需 auth，本人） |
+| DELETE | `/api/ways/{id}` | 删除路线（需 auth，本人） |
+| POST | `/api/spots` | 创建地点（需 auth） |
+| PATCH | `/api/spots/{id}` | 部分更新地点（需 auth，本人） |
+| DELETE | `/api/spots/{id}` | 删除地点（需 auth，本人） |
 
-> 当前已实现：`GET /api/spots`、`GET /api/spots/{id}`、`GET /api/ways`、`GET /api/ways/{id}`、`GET /healthz`、`POST /api/auth/register`、`POST /api/auth/login`、`GET /api/auth/me`、`POST /api/tracker/sessions`、`GET /api/tracker/sessions`、`GET /api/tracker/sessions/{id}`、`DELETE /api/tracker/sessions/{id}`
+> 当前已实现：`GET /api/spots`、`GET /api/spots/{id}`、`GET /api/ways`、`GET /api/ways/{id}`、`GET /healthz`、`POST /api/auth/register`、`POST /api/auth/login`、`GET /api/auth/me`、`POST /api/tracker/sessions`、`GET /api/tracker/sessions`、`GET /api/tracker/sessions/{id}`、`DELETE /api/tracker/sessions/{id}`、`POST /api/ways`、`PATCH /api/ways/{id}`、`DELETE /api/ways/{id}`、`POST /api/spots`、`PATCH /api/spots/{id}`、`DELETE /api/spots/{id}`
 
 ## 数据库表
 
 | 表名 | 主要列 | 备注 |
 |------|--------|------|
-| `ways` | id, name, theme, polyline, distance, duration, heat_bucket | PostGIS geometry 存储路线几何 |
-| `spots` | id, name, coordinate, category, tags | PostGIS geometry 存储坐标 |
+| `ways` | id, name, theme, polyline, distance, duration, heat_bucket, **owner_id VARCHAR NULL** | PostGIS geometry 存储路线几何；`owner_id` 关联 `users.id`，NULL 表示系统内容 |
+| `spots` | id, name, coordinate, category, tags, **owner_id VARCHAR NULL** | PostGIS geometry 存储坐标；`owner_id` 关联 `users.id`，NULL 表示系统内容 |
 | `users` | id, email, hashed_password, display_name, avatar_url, bio, home_base, created_at | 用户账号表，`002_add_users` 迁移创建 |
 | `track_sessions` | id, user_id, started_at, ended_at, track (LINESTRING), points (JSONB), photo_clusters (JSONB), tags, distance_m, duration_s, created_at | 用户轨迹会话，PostGIS LINESTRING 存储路径几何 |
 
