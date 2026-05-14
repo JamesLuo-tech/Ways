@@ -5,6 +5,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import text
 from sqlalchemy.exc import OperationalError
 
+from server.api.auth import router as auth_router
 from server.api.routes import router as ways_router
 from server.api.spots import router as spots_router
 from server.db.engine import engine
@@ -28,6 +29,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(auth_router)
 app.include_router(ways_router)
 app.include_router(spots_router)
 

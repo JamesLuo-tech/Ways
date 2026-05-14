@@ -1,5 +1,6 @@
+from datetime import datetime, timezone
 from typing import Any, Optional
-from sqlalchemy import String, Integer, Text
+from sqlalchemy import String, Integer, Text, DateTime
 from sqlalchemy.dialects.postgresql import JSONB, ARRAY
 from sqlalchemy.orm import Mapped, mapped_column
 from geoalchemy2 import Geometry
@@ -40,3 +41,20 @@ class Spot(Base):
     way_ids: Mapped[Optional[list]] = mapped_column(ARRAY(Text), nullable=True)
     contents: Mapped[Optional[Any]] = mapped_column(JSONB, nullable=True)
     related_ways: Mapped[Optional[Any]] = mapped_column(JSONB, nullable=True)
+
+
+class User(Base):
+    __tablename__ = "users"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    email: Mapped[str] = mapped_column(String, unique=True, nullable=False)
+    hashed_password: Mapped[str] = mapped_column(String, nullable=False)
+    display_name: Mapped[str] = mapped_column(String, nullable=False)
+    avatar_url: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    bio: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    home_base: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+    )

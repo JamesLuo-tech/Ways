@@ -1,4 +1,4 @@
-<!-- Last verified: 2026-05-11 | Current stage: D on top of C, PostgreSQL integrated -->
+<!-- Last verified: 2026-05-14 | Current stage: D on top of C, PostgreSQL integrated, Auth complete -->
 
 # 系统架构
 
@@ -26,6 +26,7 @@
 - UI 已从 Apple HIG Native 切换为 Warm Cream 设计系统：暖奶油底色 (#FAF9F6)、电光蓝强调色 (#0A84FF)、暖色调阴影、有机大圆角、浮动毛玻璃 Tab Bar
 - 已落地 FastAPI 示例接口：`GET /api/ways`、`GET /api/ways/{id}`、`GET /api/spots`、`GET /api/spots/{id}`、`GET /healthz`
 - 已落地 PostgreSQL 集成：SQLAlchemy 2.0 异步 ORM（GeoAlchemy2）、Alembic 迁移管理、`server/db/` ORM 层、`server/scripts/seed.py` 初始数据导入
+- 已落地完整 Auth（Tasks 2–8）：`User` ORM 模型（`server/db/models.py`）、Alembic 迁移 `002_add_users`、Pydantic auth schemas（`server/schemas/auth.py`）、`get_current_user` JWT 依赖（`server/dependencies.py`）、auth router（`server/api/auth.py`）已注册到 `server/main.py`
 - 前端已回退到 Mapbox 方案，Explore 页在原生端继续使用 `@rnmapbox/maps`，Web 端单独使用纯 `mapbox-gl`
 - 前端在未设置 `EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN` 时会退化为占位地图面板，便于先跑通交互链路
 - Explore 地图在进入 SDK 前会统一校验 `Coordinate`，过滤非法 `previewPolyline` / Spot 坐标；Web 端 Mapbox 瓦片、session、events 等短暂资源请求失败不再作为致命加载失败处理
@@ -68,13 +69,16 @@ ways/
 │   ├── main.py                   # 入口
 │   ├── requirements.txt          # 后端依赖
 │   ├── api/                      # 路由
+│   │   ├── auth.py               # Auth API（register / login / me）
 │   │   ├── routes.py             # 路线 API
 │   │   ├── spots.py              # Spot API
 │   ├── schemas/                  # Pydantic schemas
+│   │   ├── auth.py               # RegisterRequest / LoginRequest / TokenResponse / UserResponse
+│   ├── dependencies.py           # FastAPI 依赖：get_current_user（JWT Bearer）
 │   ├── services/                 # 业务逻辑 / seed 数据
 │   ├── db/                       # 数据库层
 │   │   ├── engine.py             # SQLAlchemy 异步引擎 + Base + get_db
-│   │   └── models.py             # ORM 模型（Way、Spot，含 PostGIS geometry）
+│   │   └── models.py             # ORM 模型（Way、Spot、User，含 PostGIS geometry）
 │   ├── scripts/                  # 实用脚本
 │   │   └── seed.py               # 将 mock 数据导入数据库的初始 seed 脚本
 │   └── alembic/                  # Alembic 迁移脚本目录
@@ -216,8 +220,11 @@ interface TrackPhoto {
 | GET | `/api/spots/{id}` | Spot 详情 |
 | GET | `/api/ways` | 获取区域内路线 |
 | GET | `/api/ways/{id}` | 路线详情 |
+| POST | `/api/auth/register` | 用户注册（返回 JWT accessToken） |
+| POST | `/api/auth/login` | 用户登录 / 获取 JWT |
+| GET | `/api/auth/me` | 获取当前用户信息（Bearer token 鉴权） |
 
-> 当前已实现：`GET /api/spots`、`GET /api/spots/{id}`、`GET /api/ways`、`GET /api/ways/{id}`、`GET /healthz`
+> 当前已实现：`GET /api/spots`、`GET /api/spots/{id}`、`GET /api/ways`、`GET /api/ways/{id}`、`GET /healthz`、`POST /api/auth/register`、`POST /api/auth/login`、`GET /api/auth/me`
 
 ## 环境变量
 
