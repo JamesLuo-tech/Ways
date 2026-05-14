@@ -85,6 +85,7 @@ ways/
 │       ├── env.py                # 异步迁移环境配置
 │       ├── script.py.mako        # 迁移文件模板
 │       └── versions/             # 生成的迁移版本文件
+│           └── 002_add_users.py  # users 表迁移
 ├── alembic.ini                   # Alembic 配置（script_location = server/alembic）
 ├── tests/                        # API 测试套件
 ├── wiki/                         # 项目文档
@@ -226,6 +227,14 @@ interface TrackPhoto {
 
 > 当前已实现：`GET /api/spots`、`GET /api/spots/{id}`、`GET /api/ways`、`GET /api/ways/{id}`、`GET /healthz`、`POST /api/auth/register`、`POST /api/auth/login`、`GET /api/auth/me`
 
+## 数据库表
+
+| 表名 | 主要列 | 备注 |
+|------|--------|------|
+| `ways` | id, name, theme, polyline, distance, duration, heat_bucket | PostGIS geometry 存储路线几何 |
+| `spots` | id, name, coordinate, category, tags | PostGIS geometry 存储坐标 |
+| `users` | id, email, hashed_password, display_name, avatar_url, bio, home_base, created_at | 用户账号表，`002_add_users` 迁移创建 |
+
 ## 环境变量
 
 | 变量 | 用途 | 默认值 |
@@ -235,7 +244,7 @@ interface TrackPhoto {
 | `DATABASE_URL` | PostgreSQL 异步连接串（**必填**，asyncpg 驱动） | `postgresql+asyncpg://user:pass@localhost/ways` |
 | `SUPABASE_URL` | Supabase 项目 URL | — |
 | `SUPABASE_ANON_KEY` | Supabase 匿名 key | — |
-| `JWT_SECRET` | 用户认证密钥 | — |
+| `JWT_SECRET` | JWT 签名密钥（**必填**） | — |
 
 ## 构建命令
 
