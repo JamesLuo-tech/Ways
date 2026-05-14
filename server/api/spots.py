@@ -1,12 +1,16 @@
+import uuid
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
+from geoalchemy2 import WKTElement
 from geoalchemy2.shape import to_shape
 
 from server.db.engine import get_db
-from server.db.models import Spot
+from server.db.models import Spot, User
+from server.dependencies import get_current_user
 from server.schemas.spot import SpotDetail, SpotListResponse, SpotPhoto, SpotContent, WayReference
 from server.schemas.way import SpotPreview, SpotRegion
+from server.schemas.content import CreateSpotRequest, PatchSpotRequest
 
 router = APIRouter(prefix="/api/spots", tags=["spots"])
 
@@ -16,6 +20,10 @@ def _parse_bbox(bbox: str) -> tuple[float, float, float, float]:
     if len(parts) != 4:
         raise ValueError("bbox must be west,south,east,north")
     return parts[0], parts[1], parts[2], parts[3]
+
+
+def _coord_to_wkt(coordinate: tuple[float, float]) -> WKTElement:
+    return WKTElement(f"POINT({coordinate[0]} {coordinate[1]})", srid=4326)
 
 
 def _spot_to_preview(spot: Spot) -> SpotPreview:
@@ -57,7 +65,6 @@ async def list_spots(
         envelope = func.ST_MakeEnvelope(xmin, ymin, xmax, ymax, 4326)
         stmt = stmt.where(func.ST_Within(Spot.location, envelope))
     stmt = stmt.limit(limit)
-
     result = await db.execute(stmt)
     spots = result.scalars().all()
     previews = [_spot_to_preview(s) for s in spots]
@@ -71,3 +78,82 @@ async def get_spot(spot_id: str, db: AsyncSession = Depends(get_db)) -> SpotDeta
     if spot is None:
         raise HTTPException(status_code=404, detail="Spot not found")
     return _spot_to_detail(spot)
+
+
+@router.post("", response_model=SpotDetail, status_code=201)
+async def create_spot(
+    body: CreateSpotRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> SpotDetail:
+    spot = Spot(
+        id=str(uuid.uuid4()),
+        name=body.name,
+        category=body.category,
+        location=_coord_to_wkt(body.coordinate),
+        region=body.region,
+        tags=body.tags,
+        photos=body.photos,
+        way_ids=body.wayIds,
+        contents=body.contents,
+        related_ways=body.relatedWays,
+        owner_id=current_user.id,
+    )
+    db.add(spot)
+    await db.commit()
+    await db.refresh(spot)
+    return _spot_to_detail(spot)
+
+
+@router.patch("/{spot_id}", response_model=SpotDetail)
+async def patch_spot(
+    spot_id: str,
+    body: PatchSpotRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> SpotDetail:
+    result = await db.execute(select(Spot).where(Spot.id == spot_id))
+    spot = result.scalar_one_or_none()
+    if spot is None:
+        raise HTTPException(status_code=404, detail="Spot not found")
+    if spot.owner_id is None or spot.owner_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    if body.name is not None:
+        spot.name = body.name
+    if body.category is not None:
+        spot.category = body.category
+    if body.coordinate is not None:
+        spot.location = _coord_to_wkt(body.coordinate)
+    if body.region is not None:
+        spot.region = body.region
+    if body.tags is not None:
+        spot.tags = body.tags
+    if body.photos is not None:
+        spot.photos = body.photos
+    if body.wayIds is not None:
+        spot.way_ids = body.wayIds
+    if body.contents is not None:
+        spot.contents = body.contents
+    if body.relatedWays is not None:
+        spot.related_ways = body.relatedWays
+
+    await db.commit()
+    await db.refresh(spot)
+    return _spot_to_detail(spot)
+
+
+@router.delete("/{spot_id}", status_code=204)
+async def delete_spot(
+    spot_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> None:
+    result = await db.execute(select(Spot).where(Spot.id == spot_id))
+    spot = result.scalar_one_or_none()
+    if spot is None:
+        raise HTTPException(status_code=404, detail="Spot not found")
+    if spot.owner_id is None or spot.owner_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Access denied")
+    await db.delete(spot)
+    await db.commit()

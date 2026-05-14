@@ -1,11 +1,15 @@
+import uuid
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
+from geoalchemy2 import WKTElement
 from geoalchemy2.shape import to_shape
 
 from server.db.engine import get_db
-from server.db.models import Way
+from server.db.models import Way, User
+from server.dependencies import get_current_user
 from server.schemas.way import WayListResponse, WayDetail, WayPreview, SpotPreview
+from server.schemas.content import CreateWayRequest, PatchWayRequest
 
 router = APIRouter(prefix="/api/ways", tags=["ways"])
 
@@ -15,6 +19,13 @@ def _parse_bbox(bbox: str) -> tuple[float, float, float, float]:
     if len(parts) != 4:
         raise ValueError("bbox must be west,south,east,north")
     return parts[0], parts[1], parts[2], parts[3]
+
+
+def _polyline_to_wkt(coords: list[tuple[float, float]]) -> WKTElement | None:
+    if len(coords) < 2:
+        return None
+    pts = ", ".join(f"{c[0]} {c[1]}" for c in coords)
+    return WKTElement(f"LINESTRING({pts})", srid=4326)
 
 
 def _way_to_preview(way: Way) -> WayPreview:
@@ -58,7 +69,6 @@ async def list_ways(
     if theme:
         stmt = stmt.where(Way.theme == theme)
     stmt = stmt.limit(limit)
-
     result = await db.execute(stmt)
     ways = result.scalars().all()
     previews = [_way_to_preview(w) for w in ways]
@@ -72,3 +82,88 @@ async def get_way(way_id: str, db: AsyncSession = Depends(get_db)) -> WayDetail:
     if way is None:
         raise HTTPException(status_code=404, detail="Way not found")
     return _way_to_detail(way)
+
+
+@router.post("", response_model=WayDetail, status_code=201)
+async def create_way(
+    body: CreateWayRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> WayDetail:
+    way = Way(
+        id=str(uuid.uuid4()),
+        name=body.name,
+        theme=body.theme,
+        spot_count=body.spotCount,
+        distance=body.distance,
+        duration=body.duration,
+        cover_photo=body.coverPhoto,
+        preview_polyline=_polyline_to_wkt(body.previewPolyline),
+        heat_bucket=body.heatBucket,
+        content_count=body.contentCount,
+        saved_count_label=body.savedCountLabel,
+        spots=body.spots,
+        owner_id=current_user.id,
+    )
+    db.add(way)
+    await db.commit()
+    await db.refresh(way)
+    return _way_to_detail(way)
+
+
+@router.patch("/{way_id}", response_model=WayDetail)
+async def patch_way(
+    way_id: str,
+    body: PatchWayRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> WayDetail:
+    result = await db.execute(select(Way).where(Way.id == way_id))
+    way = result.scalar_one_or_none()
+    if way is None:
+        raise HTTPException(status_code=404, detail="Way not found")
+    if way.owner_id is None or way.owner_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    if body.name is not None:
+        way.name = body.name
+    if body.theme is not None:
+        way.theme = body.theme
+    if body.previewPolyline is not None:
+        way.preview_polyline = _polyline_to_wkt(body.previewPolyline)
+    if body.coverPhoto is not None:
+        way.cover_photo = body.coverPhoto
+    if body.heatBucket is not None:
+        way.heat_bucket = body.heatBucket
+    if body.spotCount is not None:
+        way.spot_count = body.spotCount
+    if body.distance is not None:
+        way.distance = body.distance
+    if body.duration is not None:
+        way.duration = body.duration
+    if body.contentCount is not None:
+        way.content_count = body.contentCount
+    if body.savedCountLabel is not None:
+        way.saved_count_label = body.savedCountLabel
+    if body.spots is not None:
+        way.spots = body.spots
+
+    await db.commit()
+    await db.refresh(way)
+    return _way_to_detail(way)
+
+
+@router.delete("/{way_id}", status_code=204)
+async def delete_way(
+    way_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> None:
+    result = await db.execute(select(Way).where(Way.id == way_id))
+    way = result.scalar_one_or_none()
+    if way is None:
+        raise HTTPException(status_code=404, detail="Way not found")
+    if way.owner_id is None or way.owner_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Access denied")
+    await db.delete(way)
+    await db.commit()

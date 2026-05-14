@@ -23,6 +23,7 @@ class Way(Base):
     heat_bucket: Mapped[str] = mapped_column(String, nullable=False)
     content_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     saved_count_label: Mapped[str] = mapped_column(String, nullable=False, default="0")
+    owner_id: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     spots: Mapped[Optional[Any]] = mapped_column(JSONB, nullable=True)
 
 
@@ -41,6 +42,7 @@ class Spot(Base):
     way_ids: Mapped[Optional[list]] = mapped_column(ARRAY(Text), nullable=True)
     contents: Mapped[Optional[Any]] = mapped_column(JSONB, nullable=True)
     related_ways: Mapped[Optional[Any]] = mapped_column(JSONB, nullable=True)
+    owner_id: Mapped[Optional[str]] = mapped_column(String, nullable=True)
 
 
 class User(Base):
