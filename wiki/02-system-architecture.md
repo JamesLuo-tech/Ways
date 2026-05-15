@@ -73,10 +73,12 @@ ways/
 │   │   ├── routes.py             # 路线 API
 │   │   ├── spots.py              # Spot API
 │   │   ├── tracker.py            # Tracker API（会话保存 / 列表 / 详情 / 删除）
+│   │   ├── upload.py             # Upload API（照片上传到 Supabase Storage）
 │   ├── schemas/                  # Pydantic schemas
 │   │   ├── auth.py               # RegisterRequest / LoginRequest / TokenResponse / UserResponse
 │   │   ├── content.py            # CreateWayRequest / PatchWayRequest / CreateSpotRequest / PatchSpotRequest
 │   │   ├── tracker.py            # TrackSessionCreate / TrackSessionResponse 等 tracker schemas
+│   │   ├── upload.py             # UploadResponse
 │   ├── dependencies.py           # FastAPI 依赖：get_current_user（JWT Bearer）
 │   ├── services/                 # 业务逻辑 / seed 数据
 │   ├── db/                       # 数据库层
@@ -237,8 +239,9 @@ interface TrackPhoto {
 | POST | `/api/spots` | 创建地点（需 auth） |
 | PATCH | `/api/spots/{id}` | 部分更新地点（需 auth，本人） |
 | DELETE | `/api/spots/{id}` | 删除地点（需 auth，本人） |
+| POST | `/api/upload/photo` | 上传图片到 Supabase Storage，返回公开 URL（需 auth） |
 
-> 当前已实现：`GET /api/spots`、`GET /api/spots/{id}`、`GET /api/ways`、`GET /api/ways/{id}`、`GET /healthz`、`POST /api/auth/register`、`POST /api/auth/login`、`GET /api/auth/me`、`POST /api/tracker/sessions`、`GET /api/tracker/sessions`、`GET /api/tracker/sessions/{id}`、`DELETE /api/tracker/sessions/{id}`、`POST /api/ways`、`PATCH /api/ways/{id}`、`DELETE /api/ways/{id}`、`POST /api/spots`、`PATCH /api/spots/{id}`、`DELETE /api/spots/{id}`
+> 当前已实现：`GET /api/spots`、`GET /api/spots/{id}`、`GET /api/ways`、`GET /api/ways/{id}`、`GET /healthz`、`POST /api/auth/register`、`POST /api/auth/login`、`GET /api/auth/me`、`POST /api/tracker/sessions`、`GET /api/tracker/sessions`、`GET /api/tracker/sessions/{id}`、`DELETE /api/tracker/sessions/{id}`、`POST /api/ways`、`PATCH /api/ways/{id}`、`DELETE /api/ways/{id}`、`POST /api/spots`、`PATCH /api/spots/{id}`、`DELETE /api/spots/{id}`、`POST /api/upload/photo`
 
 ## 数据库表
 
@@ -256,8 +259,9 @@ interface TrackPhoto {
 | `EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN` | Expo 前端 Mapbox token | — |
 | `EXPO_PUBLIC_API_BASE_URL` | Expo 前端 API 基地址 | `http://127.0.0.1:8000` |
 | `DATABASE_URL` | PostgreSQL 异步连接串（**必填**，asyncpg 驱动） | `postgresql+asyncpg://user:pass@localhost/ways` |
-| `SUPABASE_URL` | Supabase 项目 URL | — |
+| `SUPABASE_URL` | Supabase 项目 URL（https://xxxx.supabase.co） | — |
 | `SUPABASE_ANON_KEY` | Supabase 匿名 key | — |
+| `SUPABASE_SERVICE_KEY` | Supabase service_role key（服务端上传用） | — |
 | `JWT_SECRET` | JWT 签名密钥（**必填**） | — |
 
 ## 构建命令
